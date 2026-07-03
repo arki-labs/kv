@@ -1,9 +1,9 @@
 /**
  * DOT adapter for `@arki/kv`.
  *
- * Wraps `KV` construction as a `DotPip`. The pip opens a Redis-backed
+ * Wraps `KV` construction as a DOT pip. The pip opens a Redis-backed
  * KV client in `boot`, publishes it as `services.kv`, and closes the client
- * in `dispose` (reverse-topological order).
+ * in `dispose` (reverse declaration order).
  *
  * @example
  * ```ts
@@ -18,11 +18,21 @@
  * await app.dispose();
  * ```
  *
+ * To mount a second KV scope in the same app, rename the published wire
+ * key at the mount site:
+ *
+ * ```ts
+ * import { rename } from '@arki/dot';
+ *
+ * .use(kv({ namespace: 'app' }))
+ * .use(rename(kv({ namespace: 'sessions' }), { kv: 'sessionsKv' }, 'sessions-kv'))
+ * ```
+ *
  * The `@arki/dot` package is an OPTIONAL peer of `@arki/kv`. Importing
  * this adapter without `@arki/dot` installed will fail at module load —
  * that is intentional: the adapter only makes sense in a DOT app.
  */
-import { type DotPip } from '@arki/dot/pip';
+import { type EmptyShape, type Pip } from '@arki/dot/pip';
 import { KV } from './index.js';
 /**
  * Stable error codes thrown by the kv pip. Exported so consumers and
@@ -45,11 +55,6 @@ export type KvDotOptions = {
     readonly namespace?: string;
     /** Optional prefix for rate-limit keys (default `rl`). */
     readonly rateLimitPrefix?: string;
-    /**
-     * Pip name override. Defaults to `'kv'`. Use this only when composing
-     * multiple KV scopes inside the same app (rare).
-     */
-    readonly name?: string;
 };
 /** Services published by the kv adapter. */
 export type KvServices = {
@@ -59,7 +64,7 @@ export type KvServices = {
  * Build a DOT pip that opens a `KV` client and publishes it as a service.
  *
  * @param options - Connection + naming options.
- * @returns A `DotPip` that registers a `kv`-kind service.
+ * @returns A pip that publishes `services.kv`.
  */
-export declare function kv(options?: KvDotOptions): DotPip<KvServices>;
+export declare function kv(options?: KvDotOptions): Pip<EmptyShape, KvServices>;
 //# sourceMappingURL=dot.d.ts.map
