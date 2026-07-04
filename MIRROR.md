@@ -1,6 +1,6 @@
 # @arki/kv
 
-Published version: **0.1.2**
+Published version: **0.1.3**
 
 This repository is a **read-only mirror** of the [@arki/kv](https://www.npmjs.com/package/@arki/kv) npm package.
 
