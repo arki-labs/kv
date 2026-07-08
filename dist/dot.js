@@ -1,7 +1,7 @@
 /**
  * DOT adapter for `@arki/kv`.
  *
- * Wraps `KV` construction as a DOT pip. The pip opens a Redis-backed
+ * Wraps `KV` construction as a DOT plugin. The plugin opens a Redis-backed
  * KV client in `boot`, publishes it as `services.kv`, and closes the client
  * in `dispose` (reverse declaration order).
  *
@@ -11,7 +11,9 @@
  * import { kv } from '@arki/kv/dot';
  *
  * const app = await defineApp('my-app')
- *   .use(kv({ url: process.env.KV_URL!, namespace: 'my-app' }))
+ *   // Whole-config thunk: env is read at boot, so the declaration stays
+ *   // import-pure (loadable from a bare checkout).
+ *   .use(kv(() => ({ url: env.KV_URL, namespace: 'my-app' })))
  *   .boot();
  *
  * await app.services.kv.set('hello', 'world', 60);
@@ -32,40 +34,45 @@
  * this adapter without `@arki/dot` installed will fail at module load —
  * that is intentional: the adapter only makes sense in a DOT app.
  */
-import { pip, DotPipError } from '@arki/dot/pip';
+import { DotPluginError, plugin } from '@arki/dot/plugin';
+import { resolveLazy } from '@arki/ts';
 import { KV } from './index.js';
 /**
- * Stable error codes thrown by the kv pip. Exported so consumers and
+ * Stable error codes thrown by the kv plugin. Exported so consumers and
  * coding agents can match against them — never parse the message.
  */
-export const KV_PIP_ERROR_CODES = {
+export const KV_PLUGIN_ERROR_CODES = {
     /** boot was called without a configured URL. */
-    urlNotConfigured: 'KV_PIP_E001',
+    urlNotConfigured: 'KV_PLUGIN_E001',
 };
 /**
- * Build a DOT pip that opens a `KV` client and publishes it as a service.
+ * Build a DOT plugin that opens a `KV` client and publishes it as a service.
  *
- * @param options - Connection + naming options.
- * @returns A pip that publishes `services.kv`.
+ * @param options - Connection + naming options, or a thunk producing them.
+ *   Thunk the whole object to keep the declaration import-pure — env is
+ *   then read at boot, not at module load:
+ *   `kv(() => ({ url: env.REDIS_URL, namespace: 'my-app' }))`.
+ * @returns A plugin that publishes `services.kv`.
  */
 export function kv(options = {}) {
-    return pip({
+    return plugin({
         name: 'kv',
         version: '0.1.0',
         configure(ctx) {
             ctx.registerService('kv', 'kv');
         },
         boot() {
-            const url = options.url ?? process.env['KV_URL'];
+            const config = resolveLazy(options);
+            const url = (typeof config.url === 'function' ? config.url() : config.url) ?? process.env['KV_URL'];
             if (url === undefined || url === '') {
-                throw new DotPipError({
-                    code: KV_PIP_ERROR_CODES.urlNotConfigured,
+                throw new DotPluginError({
+                    code: KV_PLUGIN_ERROR_CODES.urlNotConfigured,
                     message: '[kv] KV URL is not configured.',
                     remediation: 'Pass options.url to kv(...) or set KV_URL in the environment before booting the app.',
-                    docsUrl: 'https://arki.dev/dot/errors/kv-pip-e001',
+                    docsUrl: 'https://arki.dev/dot/errors/kv-plugin-e001',
                 });
             }
-            const client = new KV(url, options.namespace, options.rateLimitPrefix);
+            const client = new KV(url, config.namespace, config.rateLimitPrefix);
             return { kv: client };
         },
         async dispose({ kv: client }) {

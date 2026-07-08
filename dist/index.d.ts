@@ -7,6 +7,7 @@ export declare class KV {
     rateLimitPrefix?: string);
     get<T = unknown>(key: string): Promise<T | undefined>;
     set<T = unknown>(key: string, value: T, expirationSeconds?: number): Promise<boolean>;
+    setIfNotExists<T = unknown>(key: string, value: T, expirationSeconds: number): Promise<boolean>;
     mset<T = unknown>(keyValuePairs: [string, T][], _expirationSeconds?: number): Promise<void>;
     mget<T = unknown>(keys: string[]): Promise<(T | undefined)[]>;
     exists(key: string): Promise<boolean>;

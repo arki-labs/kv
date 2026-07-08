@@ -1,7 +1,7 @@
 /**
  * DOT adapter for `@arki/kv`.
  *
- * Wraps `KV` construction as a DOT pip. The pip opens a Redis-backed
+ * Wraps `KV` construction as a DOT plugin. The plugin opens a Redis-backed
  * KV client in `boot`, publishes it as `services.kv`, and closes the client
  * in `dispose` (reverse declaration order).
  *
@@ -11,7 +11,9 @@
  * import { kv } from '@arki/kv/dot';
  *
  * const app = await defineApp('my-app')
- *   .use(kv({ url: process.env.KV_URL!, namespace: 'my-app' }))
+ *   // Whole-config thunk: env is read at boot, so the declaration stays
+ *   // import-pure (loadable from a bare checkout).
+ *   .use(kv(() => ({ url: env.KV_URL, namespace: 'my-app' })))
  *   .boot();
  *
  * await app.services.kv.set('hello', 'world', 60);
@@ -32,25 +34,29 @@
  * this adapter without `@arki/dot` installed will fail at module load —
  * that is intentional: the adapter only makes sense in a DOT app.
  */
-import { type EmptyShape, type Pip } from '@arki/dot/pip';
+import type { EmptyShape, Plugin } from '@arki/dot/plugin';
+import type { Lazy } from '@arki/ts';
 import { KV } from './index.js';
 /**
- * Stable error codes thrown by the kv pip. Exported so consumers and
+ * Stable error codes thrown by the kv plugin. Exported so consumers and
  * coding agents can match against them — never parse the message.
  */
-export declare const KV_PIP_ERROR_CODES: {
+export declare const KV_PLUGIN_ERROR_CODES: {
     /** boot was called without a configured URL. */
-    readonly urlNotConfigured: "KV_PIP_E001";
+    readonly urlNotConfigured: "KV_PLUGIN_E001";
 };
 /**
  * Options for the kv DOT adapter.
  */
 export type KvDotOptions = {
     /**
-     * Redis/Keyv URL. Use `rediss://` for TLS. If omitted, the pip reads
+     * Redis/Keyv URL. Use `rediss://` for TLS. If omitted, the plugin reads
      * `KV_URL` from `process.env` (matching the `createKV` factory behaviour).
+     * To defer an env read to boot, prefer thunking the WHOLE options object
+     * — `kv(() => ({ url: env.REDIS_URL }))` — over this per-field thunk
+     * (kept for backwards compatibility).
      */
-    readonly url?: string;
+    readonly url?: string | (() => string | undefined);
     /** Optional namespace prefix for all keys (defaults to no prefix). */
     readonly namespace?: string;
     /** Optional prefix for rate-limit keys (default `rl`). */
@@ -61,10 +67,13 @@ export type KvServices = {
     readonly kv: KV;
 };
 /**
- * Build a DOT pip that opens a `KV` client and publishes it as a service.
+ * Build a DOT plugin that opens a `KV` client and publishes it as a service.
  *
- * @param options - Connection + naming options.
- * @returns A pip that publishes `services.kv`.
+ * @param options - Connection + naming options, or a thunk producing them.
+ *   Thunk the whole object to keep the declaration import-pure — env is
+ *   then read at boot, not at module load:
+ *   `kv(() => ({ url: env.REDIS_URL, namespace: 'my-app' }))`.
+ * @returns A plugin that publishes `services.kv`.
  */
-export declare function kv(options?: KvDotOptions): Pip<EmptyShape, KvServices>;
+export declare function kv(options?: Lazy<KvDotOptions>): Plugin<EmptyShape, KvServices>;
 //# sourceMappingURL=dot.d.ts.map

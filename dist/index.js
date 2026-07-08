@@ -86,6 +86,15 @@ export class KV {
         debugKV('[kv] Set result for key %s: %s', key, result ? 'success' : 'failed');
         return result;
     }
+    async setIfNotExists(key, value, expirationSeconds) {
+        debugKV('[kv] Setting key if absent: %s (ttl: %ss)', key, expirationSeconds);
+        const namespacedKey = this.namespace ? `${this.namespace}:${key}` : key;
+        const serialized = JSON.stringify(value) ?? 'null';
+        const result = await this.#redisClient.set(namespacedKey, serialized, 'EX', expirationSeconds, 'NX');
+        const acquired = result === 'OK';
+        debugKV('[kv] Set-if-absent result for key %s: %s', key, acquired ? 'acquired' : 'exists');
+        return acquired;
+    }
     async mset(keyValuePairs, _expirationSeconds) {
         debugKV('[kv] Setting multiple keys (count: %d)', keyValuePairs.length);
         const entries = keyValuePairs.map(([key, value]) => ({ key, value }));
