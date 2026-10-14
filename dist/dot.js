@@ -43,7 +43,7 @@ import { KV } from './index.js';
  */
 export const KV_PLUGIN_ERROR_CODES = {
     /** boot was called without a configured URL. */
-    urlNotConfigured: 'KV_PLUGIN_E001',
+    urlNotConfigured: 'ARKI_KV_PLUGIN_E001',
 };
 /**
  * Build a DOT plugin that opens a `KV` client and publishes it as a service.
@@ -69,7 +69,7 @@ export function kv(options = {}) {
                     code: KV_PLUGIN_ERROR_CODES.urlNotConfigured,
                     message: '[kv] KV URL is not configured.',
                     remediation: 'Pass options.url to kv(...) or set KV_URL in the environment before booting the app.',
-                    docsUrl: 'https://arki.dev/dot/errors/kv-plugin-e001',
+                    docsUrl: 'https://arki.dev/dot/errors/arki-kv-plugin-e001',
                 });
             }
             const client = new KV(url, config.namespace, config.rateLimitPrefix);
