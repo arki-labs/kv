@@ -43,7 +43,7 @@ import { KV } from './index.js';
  */
 export declare const KV_PLUGIN_ERROR_CODES: {
     /** boot was called without a configured URL. */
-    readonly urlNotConfigured: "KV_PLUGIN_E001";
+    readonly urlNotConfigured: 'KV_PLUGIN_E001';
 };
 /**
  * Options for the kv DOT adapter.

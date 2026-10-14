@@ -15,4 +15,20 @@ export class RateLimitExceededError extends Error {
         };
     }
 }
+export const KV_INITIALIZATION_ERROR_CODES = {
+    urlRequiredInProduction: 'KV_INIT_E001',
+    connectionFailed: 'KV_INIT_E002',
+    creationFailed: 'KV_INIT_E003',
+};
+/** The KV store could not be set up in production. The caller decides whether to end the program. */
+export class KVInitializationError extends Error {
+    code;
+    remediation;
+    constructor(args) {
+        super(args.message, { cause: args.cause });
+        this.name = 'KVInitializationError';
+        this.code = args.code;
+        this.remediation = args.remediation;
+    }
+}
 //# sourceMappingURL=errors.js.map

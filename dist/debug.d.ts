@@ -7,13 +7,12 @@
  * DEBUG=kv:limiter - Enable rate limiter logs only
  * DEBUG=kv:* - Enable all logs
  */
-import { createDebug } from '@arki/log/debug';
 /**
  * Debug logger for KV client operations
  */
-export declare const debugKV: createDebug.Debugger;
+export declare const debugKV: import("@arki/log").Logger;
 /**
  * Debug logger for rate limiting operations
  */
-export declare const debugLimiter: createDebug.Debugger;
+export declare const debugLimiter: import("@arki/log").Logger;
 //# sourceMappingURL=debug.d.ts.map
