@@ -2,6 +2,7 @@ export declare const env: Readonly<{
     NODE_ENV: "development" | "production" | "test";
     KV_URL?: string | undefined;
     KV_NAMESPACE?: string | undefined;
+    KV_ALLOW_UNVERIFIED_TLS: boolean;
     REDIS_HOST?: string | undefined;
     REDIS_PORT: number;
     REDIS_USERNAME?: string | undefined;

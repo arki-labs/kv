@@ -5,7 +5,7 @@ import { KV } from './index.js';
  *   Falls back to the KV_NAMESPACE environment variable if not provided.
  * @param rateLimitPrefix - Optional prefix for rate limiter keys (default: 'rl')
  * @returns KV instance
- * @throws Error if KV_URL is not configured
+ * @throws KVInitializationError (`KV_INIT_E004`) if KV_URL is not configured
  */
 export declare function createKV(namespace?: string, rateLimitPrefix?: string): KV;
 /**
@@ -13,7 +13,7 @@ export declare function createKV(namespace?: string, rateLimitPrefix?: string): 
  * @param namespace - The KV namespace (typically the app key).
  *   Falls back to the KV_NAMESPACE environment variable if not provided.
  * @returns KV instance configured for rate limiting
- * @throws Error if RATE_LIMIT_REDIS_URL or KV_URL is not configured
+ * @throws KVInitializationError (`KV_INIT_E004`) if RATE_LIMIT_REDIS_URL or KV_URL is not configured
  */
 export declare function createRateLimitKV(namespace?: string): KV;
 //# sourceMappingURL=factory.d.ts.map

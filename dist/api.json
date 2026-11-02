@@ -1,0 +1,194 @@
+{
+  "package": "@arki/kv",
+  "version": "0.5.0",
+  "entries": [
+    {
+      "subpath": ".",
+      "name": "createKV",
+      "kind": "function",
+      "signature": "export declare function createKV(namespace?: string, rateLimitPrefix?: string): KV;",
+      "jsdocSummary": "Create a KV instance using environment configuration"
+    },
+    {
+      "subpath": ".",
+      "name": "createRateLimitKV",
+      "kind": "function",
+      "signature": "export declare function createRateLimitKV(namespace?: string): KV;",
+      "jsdocSummary": "Create a KV instance for rate limiting using environment configuration"
+    },
+    {
+      "subpath": ".",
+      "name": "KV",
+      "kind": "class",
+      "signature": "export declare class KV { #private; private readonly namespace?; private readonly rateLimitPrefix; constructor(redisUrl: string, namespace?: string | undefined, // Keyv namespace rateLimitPrefix?: string, // Prefix for rate limiter keys options?: KvOptions); /** * Read `key` and check it against `schema` (any Standard Schema, zod by default). Returns the parsed * value, `undefined` for a missing key, {@link KvValueInvalid} when the stored value has the wrong shape, * or {@link KvUnavailable} / {@link KvCancelled}. */ get<Schema extends StandardSchemaV1>(key: string, schema: Schema, options?: KvCallOptions): Promise<Failure | SchemaOutput<Schema> | undefined>; /** Write `value` (anything JSON can hold). With `expirationSeconds` the key expires after that many seconds. */ set(key: string, value: unknown, expirationSeconds?: number, options?: KvCallOptions): Promise<boolean | Failure<\"kv.cancelled\", { command: string; }> | Failure<\"kv.unavailable\", { command: string; reason: string; }>>; /** * Write `value` only if `key` is absent, in one atomic Redis `SET NX EX`. The key and the stored * format are the ones {@link KV.set} uses, so {@link KV.get} reads the value back. */ setIfNotExists(key: string, value: unknown, expirationSeconds: number, options?: KvCallOptions): Promise<boolean | Failure<\"kv.cancelled\", { command: string; }> | Failure<\"kv.unavailable\", { command: string; reason: string; }>>; /** Write every pair; with `expirationSeconds`, each pair expires after that many seconds. */ mset(keyValuePairs: readonly (readonly [string, unknown])[], expirationSeconds?: number, options?: KvCallOptions): Promise<void | Failure<\"kv.cancelled\", { command: string; }> | Failure<\"kv.unavailable\", { command: string; reason: string; }>>; /** * Read several keys and check each stored value against `schema`. Missing keys are `undefined`. * The first value with the wrong shape fails the whole call with {@link KvValueInvalid}. */ mget<Schema extends StandardSchemaV1>(keys: readonly string[], schema: Schema, options?: KvCallOptions): Promise<(SchemaOutput<Schema> | undefined)[] | Failure>; exists(key: string, options?: KvCallOptions): Promise<boolean | Failure<\"kv.cancelled\", { command: string; }> | Failure<\"kv.unavailable\", { command: string; reason: string; }>>; delete(key: string, options?: KvCallOptions): Promise<boolean | Failure<\"kv.cancelled\", { command: string; }> | Failure<\"kv.unavailable\", { command: string; reason: string; }>>; deleteMany(keys: readonly string[], options?: KvCallOptions): Promise<boolean | Failure<\"kv.cancelled\", { command: string; }> | Failure<\"kv.unavailable\", { command: string; reason: string; }>>; clear(options?: KvCallOptions): Promise<void | Failure<\"kv.cancelled\", { command: string; }> | Failure<\"kv.unavailable\", { command: string; reason: string; }>>; /** Publish `message` on `channel`. Returns how many subscribers received it. */ publish(channel: string, message: string, options?: KvCallOptions): Promise<number | Failure<\"kv.cancelled\", { command: string; }> | Failure<\"kv.unavailable\", { command: string; reason: string; }>>; /** * The ids of rate limiters that count in this process only, because Redis was not ready when they * were made. Their limits are not shared with other replicas. A limiter leaves this list when * `getRateLimiter` rebuilds it on Redis after the connection is ready. */ get degradedRateLimiters(): readonly string[]; /** * Gets or creates a RateLimiter instance with the specified options. * * @param id A unique identifier for this rate limiter configuration (e.g., 'login', 'api_global'). * @param options Configuration options for the rate limiter (points, duration, etc.). * See `rate-limiter-flexible` documentation for details. * Defaults typically include `points` and `duration`. * @returns A RateLimiterAbstract instance ready to use (.consume, .get, etc.). * While Redis is not ready this is a per-process `RateLimiterMemory`: a warning is logged, * the id appears in {@link KV.degradedRateLimiters}, and the next call after Redis becomes * ready returns a Redis-backed limiter instead. */ getRateLimiter(id: string, options: Partial<IRateLimiterOptions>): RateLimiterAbstract; /** * Disconnects both Keyv and the Rate Limiter Redis client. Both disconnects are tried; a returned * {@link KvCloseFailed} names the first one that failed. `undefined` means both closed. */ close(): Promise<KvCloseFailed | undefined>; }",
+      "jsdocSummary": ""
+    },
+    {
+      "subpath": ".",
+      "name": "KvCallOptions",
+      "kind": "type",
+      "signature": "export type KvCallOptions = { /** Aborting the signal ends the wait with {@link KvCancelled}. A write that was already sent may still land. */ readonly signal?: AbortSignal; };",
+      "jsdocSummary": "Options for one command."
+    },
+    {
+      "subpath": ".",
+      "name": "KvCancelled",
+      "kind": "variable",
+      "signature": "export declare const KvCancelled: import(\"@arki/failure\").FailureDefinition<\"kv.cancelled\", import(\"@standard-schema/spec\").StandardSchemaV1<{ command: string; }, { command: string; }>>; ; export type KvCancelled = ReturnType<typeof KvCancelled>;",
+      "jsdocSummary": "The caller's `AbortSignal` ended a KV command. Nothing is wrong with Redis. For a write, the effect is unknown. A {@link KvCancelled} failure value."
+    },
+    {
+      "subpath": ".",
+      "name": "KvCloseFailed",
+      "kind": "variable",
+      "signature": "export declare const KvCloseFailed: import(\"@arki/failure\").FailureDefinition<\"kv.close_failed\", import(\"@standard-schema/spec\").StandardSchemaV1<{ target: \"limiter\" | \"store\"; reason: string; }, { target: \"limiter\" | \"store\"; reason: string; }>>; ; export type KvCloseFailed = ReturnType<typeof KvCloseFailed>;",
+      "jsdocSummary": "`KV.close()` could not disconnect one of its two Redis connections. The connection may still be open. `target` says which one: `store` (the Keyv connection) or `limiter` (the rate limiter connection). A {@link KvCloseFailed} failure value."
+    },
+    {
+      "subpath": ".",
+      "name": "KvOptions",
+      "kind": "type",
+      "signature": "export type KvOptions = { /** * Skip TLS certificate checks for a `rediss://` URL (default `false`: the certificate is verified). * Turn it on only for a server with a self-signed certificate that you trust, such as a local test Redis. */ readonly allowUnverifiedTls?: boolean; /** * How long one command may take before it returns {@link KvUnavailable}, in milliseconds (default `5000`). * A Redis that is down never answers (the client keeps reconnecting), so without this limit a call would wait for ever. */ readonly commandTimeoutMs?: number; };",
+      "jsdocSummary": "Options for {@link KV} beyond the URL, namespace and rate limit prefix."
+    },
+    {
+      "subpath": ".",
+      "name": "KvUnavailable",
+      "kind": "variable",
+      "signature": "export declare const KvUnavailable: import(\"@arki/failure\").FailureDefinition<\"kv.unavailable\", import(\"@standard-schema/spec\").StandardSchemaV1<{ command: string; reason: string; }, { command: string; reason: string; }>>; ; export type KvUnavailable = ReturnType<typeof KvUnavailable>;",
+      "jsdocSummary": "A KV command did not complete: Redis refused the connection, dropped it, or did not answer within `commandTimeoutMs`. For a write, the effect is unknown: the key may or may not have changed. `command` names the method (`get`, `set`, ...); `reason` is the driver's message. A {@link KvUnavailable} failure value."
+    },
+    {
+      "subpath": ".",
+      "name": "KvValueInvalid",
+      "kind": "variable",
+      "signature": "export declare const KvValueInvalid: import(\"@arki/failure\").FailureDefinition<\"kv.value_invalid\", import(\"@standard-schema/spec\").StandardSchemaV1<{ key: string; issues: string; }, { key: string; issues: string; }>>; ; export type KvValueInvalid = ReturnType<typeof KvValueInvalid>;",
+      "jsdocSummary": "Redis answered, but the stored value does not match the schema given to `get` or `mget`. `key` is the key, `issues` says what is wrong in one line. The value stays in Redis untouched. A {@link KvValueInvalid} failure value."
+    },
+    {
+      "subpath": ".",
+      "name": "RateLimiterRes",
+      "kind": "class",
+      "signature": "export class RateLimiterRes { constructor( remainingPoints?: number, msBeforeNext?: number, consumedPoints?: number, isFirstInDuration?: boolean ); readonly msBeforeNext: number; readonly remainingPoints: number; readonly consumedPoints: number; readonly isFirstInDuration: boolean; toString(): string; toJSON(): { remainingPoints: number; msBeforeNext: number; consumedPoints: number; isFirstInDuration: boolean; }; }",
+      "jsdocSummary": ""
+    },
+    {
+      "subpath": "./dot",
+      "name": "kv",
+      "kind": "function",
+      "signature": "export declare function kv(options?: Deferred<KvDotOptions>): Omit<import(\"@arki/dot/unit\").Unit<import(\"@arki/dot/unit\").WireNeeds<import(\"@arki/dot/unit\").EmptyShape>, import(\"@arki/dot/unit\").ProvidedValues<{ kv: KV | Promise<KV>; }>, import(\"@arki/dot/unit\").EmptyShape, \"kv\", import(\"@arki/dot/unit\").EmptyOwnership, import(\"@arki/dot/unit\").EmptyPhases>, \"factories\" | \"hooks\" | \"logging\"> & import(\"@arki/dot/unit\").LoggingSlot<import(\"@arki/dot/unit\").DotLoggingHandle<undefined>> & import(\"@arki/dot/unit\").FactoryContract<import(\"@arki/dot/unit\").ProvidedValues<{ kv: KV | Promise<KV>; }>> & { readonly factories: { readonly kv: (ctx: never) => KV | Promise<KV>; }; readonly hooks: import(\"@arki/dot/unit\").PhaseHooks<never, { readonly configure: undefined; readonly start: undefined; readonly stop: undefined; readonly dispose: undefined; }, import(\"@arki/dot/unit\").DotConfigureContext> & import(\"@arki/dot/unit\").BootSlot<import(\"@arki/dot/unit\").CtxOf<import(\"@arki/dot/unit\").EmptyShape> & import(\"@arki/dot/unit\").ProvidedValues<{ kv: KV | Promise<KV>; }> & import(\"@arki/dot/unit\").KernelCtx, undefined>; } & import(\"@arki/dot/unit\").InfraRole; ; export declare namespace kv { var optional: (options?: Deferred<KvDotOptions>) => Omit<import(\"@arki/dot/unit\").Unit<import(\"@arki/dot/unit\").WireNeeds<import(\"@arki/dot/unit\").EmptyShape>, import(\"@arki/dot/unit\").ProvidedValues<{ kv: KV | Promise<KV> | null; }>, import(\"@arki/dot/unit\").EmptyShape, \"kv\", import(\"@arki/dot/unit\").EmptyOwnership, import(\"@arki/dot/unit\").EmptyPhases>, \"factories\" | \"hooks\" | \"logging\"> & import(\"@arki/dot/unit\").LoggingSlot<import(\"@arki/dot/unit\").DotLoggingHandle<undefined>> & import(\"@arki/dot/unit\").FactoryContract<import(\"@arki/dot/unit\").ProvidedValues<{ kv: KV | Promise<KV> | null; }>> & { readonly factories: { readonly kv: (ctx: never) => KV | Promise<KV> | null; }; readonly hooks: import(\"@arki/dot/unit\").PhaseHooks<never, { readonly configure: undefined; readonly start: undefined; readonly stop: undefined; readonly dispose: undefined; }, import(\"@arki/dot/unit\").DotConfigureContext> & import(\"@arki/dot/unit\").BootSlot<import(\"@arki/dot/unit\").CtxOf<import(\"@arki/dot/unit\").EmptyShape> & import(\"@arki/dot/unit\").ProvidedValues<{ kv: KV | Promise<KV> | null; }> & import(\"@arki/dot/unit\").KernelCtx, undefined>; } & import(\"@arki/dot/unit\").InfraRole; }",
+      "jsdocSummary": "Build a DOT plugin that opens a `KV` client and publishes it as a service."
+    },
+    {
+      "subpath": "./dot",
+      "name": "KV_PLUGIN_ERROR_CODES",
+      "kind": "variable",
+      "signature": "export declare const KV_PLUGIN_ERROR_CODES: { /** * `kv()` booted without a configured URL: no `url` option and no `KV_URL`. * * @fix Set `KV_URL`, pass `url`, or use `kv.optional()` for an app that runs without Redis. * @verify bun run test -- src/dot.test.ts */ readonly urlNotConfigured: 'ARKI_KV_PLUGIN_E001'; /** * `probe: true` was set and the set, get and delete round trip at boot failed or timed out. * * @fix Check the URL, the network and the credentials. Raise `probeTimeoutMs` for a slow link. * @verify bun run test -- src/dot.test.ts */ readonly probeFailed: 'ARKI_KV_PLUGIN_E002'; };",
+      "jsdocSummary": "Stable error codes thrown by the kv plugin. Exported so consumers and coding agents can match against them — never parse the message."
+    },
+    {
+      "subpath": "./dot",
+      "name": "KvDotOptions",
+      "kind": "type",
+      "signature": "export type KvDotOptions = { /** * Redis/Keyv URL. Use `rediss://` for TLS. If omitted, the plugin reads * `KV_URL` from `process.env` (matching the `createKV` factory behaviour). * To defer an env read to boot, prefer thunking the WHOLE options object * — `kv(() => ({ url: env.REDIS_URL }))` — over this per-field thunk * (kept for backwards compatibility). */ readonly url?: string | (() => string | undefined); /** Optional namespace prefix for all keys (defaults to no prefix). */ readonly namespace?: string; /** Optional prefix for rate-limit keys (default `rl`). */ readonly rateLimitPrefix?: string; /** * Skip TLS certificate checks for a `rediss://` URL (default `false`: the certificate is verified). * Turn it on only for a server with a self-signed certificate that you trust. */ readonly allowUnverifiedTls?: boolean; /** * Prove the connection at boot with a set/get/delete round trip (default * `false`). A bad or unreachable URL then fails boot instead of the first * request. The client is closed before the error is thrown. */ readonly probe?: boolean; /** * How long the probe may take, in milliseconds (default `5000`). An * unreachable Redis never answers — the client keeps reconnecting — so * without this limit a bad URL would hang boot instead of failing it. */ readonly probeTimeoutMs?: number; /** How long one command may take before it returns `KvUnavailable`, in milliseconds (default `5000`). */ readonly commandTimeoutMs?: number; };",
+      "jsdocSummary": "Options for the kv DOT adapter."
+    },
+    {
+      "subpath": "./dot",
+      "name": "KvServices",
+      "kind": "type",
+      "signature": "export type KvServices = { readonly kv: KV; };",
+      "jsdocSummary": "Services published by the kv adapter."
+    },
+    {
+      "subpath": "./env",
+      "name": "env",
+      "kind": "variable",
+      "signature": "export declare const env: Readonly<{ NODE_ENV: \"development\" | \"production\" | \"test\"; KV_URL?: string | undefined; KV_NAMESPACE?: string | undefined; KV_ALLOW_UNVERIFIED_TLS: boolean; REDIS_HOST?: string | undefined; REDIS_PORT: number; REDIS_USERNAME?: string | undefined; REDIS_PASSWORD?: string | undefined; REDIS_DB: number; REDIS_TLS: boolean; UPSTASH_REDIS_REST_URL?: string | undefined; UPSTASH_REDIS_REST_TOKEN?: string | undefined; RATE_LIMIT_REDIS_URL?: string | undefined; RATE_LIMIT_PREFIX: string; CACHE_TTL_DEFAULT: number; CACHE_TTL_LONG: number; CACHE_TTL_SHORT: number; }>;",
+      "jsdocSummary": ""
+    },
+    {
+      "subpath": "./errors",
+      "name": "KV_INITIALIZATION_ERROR_CODES",
+      "kind": "variable",
+      "signature": "export declare const KV_INITIALIZATION_ERROR_CODES: { /** * Production started without `KV_URL`, so no store can be opened. * * @fix Set `KV_URL` in the production environment. * @verify bun run test -- src/instance.test.ts */ readonly urlRequiredInProduction: 'KV_INIT_E001'; /** * The store did not accept the connection in production. * * @fix Check the URL, the network and the credentials, then restart. * @verify bun run test -- src/instance.test.ts */ readonly connectionFailed: 'KV_INIT_E002'; /** * Creating the KV client threw in production. * * @fix Read the error `cause`. It names the invalid option or the failing call. * @verify bun run test -- src/instance.test.ts */ readonly creationFailed: 'KV_INIT_E003'; /** * A factory (`createKV`, `createRateLimitKV`) ran without a Redis URL. * * @fix Set `KV_URL` (or `RATE_LIMIT_REDIS_URL` for `createRateLimitKV`). * @verify bun run test -- src/factory.test.ts */ readonly urlNotConfigured: 'KV_INIT_E004'; };",
+      "jsdocSummary": ""
+    },
+    {
+      "subpath": "./errors",
+      "name": "KvCancelled",
+      "kind": "variable",
+      "signature": "export declare const KvCancelled: import(\"@arki/failure\").FailureDefinition<\"kv.cancelled\", import(\"@standard-schema/spec\").StandardSchemaV1<{ command: string; }, { command: string; }>>; ; export type KvCancelled = ReturnType<typeof KvCancelled>;",
+      "jsdocSummary": "The caller's `AbortSignal` ended a KV command. Nothing is wrong with Redis. For a write, the effect is unknown. A {@link KvCancelled} failure value."
+    },
+    {
+      "subpath": "./errors",
+      "name": "KvCloseFailed",
+      "kind": "variable",
+      "signature": "export declare const KvCloseFailed: import(\"@arki/failure\").FailureDefinition<\"kv.close_failed\", import(\"@standard-schema/spec\").StandardSchemaV1<{ target: \"limiter\" | \"store\"; reason: string; }, { target: \"limiter\" | \"store\"; reason: string; }>>; ; export type KvCloseFailed = ReturnType<typeof KvCloseFailed>;",
+      "jsdocSummary": "`KV.close()` could not disconnect one of its two Redis connections. The connection may still be open. `target` says which one: `store` (the Keyv connection) or `limiter` (the rate limiter connection). A {@link KvCloseFailed} failure value."
+    },
+    {
+      "subpath": "./errors",
+      "name": "KVInitializationError",
+      "kind": "class",
+      "signature": "export declare class KVInitializationError extends Error { readonly code: (typeof KV_INITIALIZATION_ERROR_CODES)[keyof typeof KV_INITIALIZATION_ERROR_CODES]; readonly remediation: string; constructor(args: { readonly code: (typeof KV_INITIALIZATION_ERROR_CODES)[keyof typeof KV_INITIALIZATION_ERROR_CODES]; readonly message: string; readonly remediation: string; readonly cause?: unknown; }); }",
+      "jsdocSummary": "The KV store could not be set up in production. The caller decides whether to end the program."
+    },
+    {
+      "subpath": "./errors",
+      "name": "KvUnavailable",
+      "kind": "variable",
+      "signature": "export declare const KvUnavailable: import(\"@arki/failure\").FailureDefinition<\"kv.unavailable\", import(\"@standard-schema/spec\").StandardSchemaV1<{ command: string; reason: string; }, { command: string; reason: string; }>>; ; export type KvUnavailable = ReturnType<typeof KvUnavailable>;",
+      "jsdocSummary": "A KV command did not complete: Redis refused the connection, dropped it, or did not answer within `commandTimeoutMs`. For a write, the effect is unknown: the key may or may not have changed. `command` names the method (`get`, `set`, ...); `reason` is the driver's message. A {@link KvUnavailable} failure value."
+    },
+    {
+      "subpath": "./errors",
+      "name": "KvValueInvalid",
+      "kind": "variable",
+      "signature": "export declare const KvValueInvalid: import(\"@arki/failure\").FailureDefinition<\"kv.value_invalid\", import(\"@standard-schema/spec\").StandardSchemaV1<{ key: string; issues: string; }, { key: string; issues: string; }>>; ; export type KvValueInvalid = ReturnType<typeof KvValueInvalid>;",
+      "jsdocSummary": "Redis answered, but the stored value does not match the schema given to `get` or `mget`. `key` is the key, `issues` says what is wrong in one line. The value stays in Redis untouched. A {@link KvValueInvalid} failure value."
+    },
+    {
+      "subpath": "./instance",
+      "name": "createKVInstance",
+      "kind": "function",
+      "signature": "export declare function createKVInstance(namespace?: string): KV | null;",
+      "jsdocSummary": "Create KV instance synchronously without connection test"
+    },
+    {
+      "subpath": "./instance",
+      "name": "initializeKV",
+      "kind": "function",
+      "signature": "export declare function initializeKV(namespace?: string): Promise<KV | null>;",
+      "jsdocSummary": "Initializes the shared KV client instance and tests the connection. Returns null if env vars are missing (development only)."
+    },
+    {
+      "subpath": "./redis/idempotency",
+      "name": "redisResponseCache",
+      "kind": "function",
+      "signature": "export declare function redisResponseCache(redis: Redis, options?: RedisResponseCacheOptions): ResponseCache;",
+      "jsdocSummary": "A response cache on Redis. Pending reservations have no TTL."
+    },
+    {
+      "subpath": "./redis/idempotency",
+      "name": "RedisResponseCacheOptions",
+      "kind": "type",
+      "signature": "export type RedisResponseCacheOptions = { /** Prefix for every key. Default `idem:`. */ readonly prefix?: string; };",
+      "jsdocSummary": ""
+    }
+  ],
+  "groups": [],
+  "errorCodes": [
+    "ARKI_KV_PLUGIN_E001",
+    "ARKI_KV_PLUGIN_E002",
+    "KV_INIT_E001",
+    "KV_INIT_E002",
+    "KV_INIT_E003",
+    "KV_INIT_E004",
+    "kv.cancelled",
+    "kv.close_failed",
+    "kv.unavailable",
+    "kv.value_invalid"
+  ]
+}

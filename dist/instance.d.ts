@@ -22,12 +22,4 @@ export declare function initializeKV(namespace?: string): Promise<KV | null>;
  * @internal Use this in application singletons for synchronous initialization
  */
 export declare function createKVInstance(namespace?: string): KV | null;
-/**
- * @deprecated Use createKVInstance() or initializeKV() in your application singleton instead.
- * This export is kept for backward compatibility but will be removed in a future version.
- *
- * Direct usage of this export causes re-initialization on every module import,
- * especially problematic in Next.js development with HMR.
- */
-export declare const kv: KV | null;
 //# sourceMappingURL=instance.d.ts.map

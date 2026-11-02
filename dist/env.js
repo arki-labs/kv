@@ -1,3 +1,4 @@
+/** The validated KV and Redis environment variables (`KV_URL`, `RATE_LIMIT_REDIS_URL`, ...). */
 import { defineEnv } from '@arki/env/core';
 import { z } from '@arki/contracts';
 export const env = defineEnv({
@@ -11,6 +12,11 @@ export const env = defineEnv({
         // KV/Redis Configuration
         KV_URL: z.url().optional(),
         KV_NAMESPACE: z.string().optional(),
+        /** `true` turns TLS certificate checking off for `rediss://` URLs. Verified by default. */
+        KV_ALLOW_UNVERIFIED_TLS: z
+            .string()
+            .optional()
+            .transform(val => val === 'true'),
         // Redis-specific configurations (for advanced Redis features)
         REDIS_HOST: z.string().optional(),
         REDIS_PORT: z.coerce.number().default(6379),
@@ -34,8 +40,5 @@ export const env = defineEnv({
     },
     client: {},
     clientPrefix: '',
-    options: {
-        skipValidation: !!process.env['CI'] || process.env['NODE_ENV'] === 'test',
-    },
 });
 //# sourceMappingURL=env.js.map
