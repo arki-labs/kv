@@ -1,4 +1,4 @@
-Read-only mirror of `@arki/kv` v0.5.0. Source and issues: arki-labs/arki. Docs: https://arki.dev/packages/kv. Published 2026-11-02 with provenance https://www.npmjs.com/package/@arki/kv/v/0.5.0#provenance.
+Read-only mirror of `@arki/kv` v0.6.0. Source and issues: arki-labs/arki. Docs: https://arki.dev/packages/kv. Published 2026-11-23 with provenance https://www.npmjs.com/package/@arki/kv/v/0.6.0#provenance.
 
 # @arki/kv
 
@@ -45,7 +45,17 @@ This needs a Redis at that URL, so the block is compiled and not run. In an app,
 
 ## Runtime support
 
-Node and Bun on a server. The client uses `ioredis` and `@keyv/redis`, which need sockets. It does not run in a browser, Deno or Hermes. `@arki/kv/errors` has no Redis import.
+Node, Bun and Deno on a server. The client uses `ioredis` and `@keyv/redis`, which need sockets. It does not run in a browser or Hermes. `@arki/kv/errors` has no Redis import.
+
+<!-- runtimes:start -->
+| Runtime | Result | Version tested | Date (UTC) |
+| --- | --- | --- | --- |
+| node | pass | v22.13.1 | 2026-11-05 |
+| bun | pass | 1.4.2 | 2026-11-05 |
+| deno | pass | 2.9.8 | 2026-11-05 |
+| browser | n/a | - | 2026-11-05 |
+| hermes | n/a | - | 2026-11-05 |
+<!-- runtimes:end -->
 
 ## Usage
 
@@ -117,6 +127,21 @@ idempotent({ cache: redisResponseCache(redis), scope, routes: [route.post('/orde
 `begin` uses `SET key value NX` without expiry. Pending reservations persist until the application reconciles them. `finish` checks the owner and atomically writes the response with `PX ttl`, starting replay retention then. A missing or different owner returns `IdempotencyOwnershipLost`; Redis rejection returns the operation's unconfirmed failure with a private cause. Invalid replay data returns `IdempotencyReplayInvalid`. `abandon` releases only a pending reservation owned by the caller, after reconciliation proves repetition safe. Keys use `idem:` unless you pass `{ prefix }`. `@arki/http` is an optional peer.
 
 Upgrade with all old writers stopped: drain active requests, inventory legacy pending keys, reconcile their application outcomes, and `PERSIST` unresolved keys before reopening traffic. Do not delete a pending key merely because its old TTL elapsed. Mixed writer versions are unsafe because old writers can expire unresolved reservations. Use durable Redis persistence and an eviction policy that preserves reservations; store loss still needs durable application receipts to prevent duplicate business work.
+
+## Observability
+
+Spans (OpenTelemetry API only; nothing is exported until the app configures an SDK):
+
+| Span                                                                      | When                                                                         | Attributes                           |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------ |
+| `kv.<command>`                                                            | each `KV` command (`get`, `set`, `delete`, …), until it answers or times out | `failure.code` on a returned failure |
+| `kv.idempotency.begin`, `kv.idempotency.finish`, `kv.idempotency.abandon` | each `redisResponseCache` call; under `@arki/http`'s `http.idempotency` span | `failure.code` on a returned failure |
+
+Metrics: `kv.commands` (counter; `command`, `outcome`).
+
+Never recorded: keys, values, idempotency owners, fingerprints, responses.
+
+Not instrumented: the rate limiter's `consume` — `getRateLimiter()` returns `rate-limiter-flexible`'s own object, and wrapping a foreign class to add a span would change its type and behaviour; its Redis calls show up with an ioredis instrumentation in the app. Connecting and `close()` — lifecycle, spanned by Dot's `dot.unit.*` hooks when `@arki/kv/dot` opens the client.
 
 ## Environment variables
 

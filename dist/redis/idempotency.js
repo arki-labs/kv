@@ -1,6 +1,7 @@
 import { isFailure } from '@arki/failure';
 import { IdempotencyClaimUnconfirmed, IdempotencyOwnershipLost, IdempotencyReleaseUnconfirmed, IdempotencyReplayInvalid, IdempotencyWriteUnconfirmed, storedResponse, } from '@arki/http/idempotency';
 import { parse } from '@arki/schema';
+import { observeKv } from '../telemetry.js';
 /** Set the response when the key still belongs to `owner`. ARGV: owner, response json, TTL. */
 const FINISH = `
 local value = redis.call('GET', KEYS[1])
@@ -37,7 +38,7 @@ const parseHeld = (value) => {
 /** A response cache on Redis. Pending reservations have no TTL. */
 export function redisResponseCache(redis, options = {}) {
     const prefix = options.prefix ?? 'idem:';
-    return {
+    const cache = {
         async begin(key, fingerprint, owner) {
             if (owner.length === 0 || owner.includes('\n') || fingerprint.length === 0 || fingerprint.includes('\n'))
                 return IdempotencyClaimUnconfirmed();
@@ -107,6 +108,11 @@ export function redisResponseCache(redis, options = {}) {
             }
             return;
         },
+    };
+    return {
+        begin: (key, fingerprint, owner) => observeKv('idempotency.begin', () => cache.begin(key, fingerprint, owner)),
+        finish: (key, owner, response, ttl) => observeKv('idempotency.finish', () => cache.finish(key, owner, response, ttl)),
+        abandon: (key, owner) => observeKv('idempotency.abandon', () => cache.abandon(key, owner)),
     };
 }
 //# sourceMappingURL=idempotency.js.map

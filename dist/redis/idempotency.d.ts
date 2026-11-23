@@ -10,6 +10,10 @@
  * `abandon` are small Lua scripts that check the owner and write in one step, so a slow worker
  * whose key was reconciled and reassigned cannot touch the new entry.
  * Pending reservations never expire. `finish` starts replay retention atomically with `SET PX`.
+ *
+ * Each call runs in a `kv.idempotency.begin`, `kv.idempotency.finish` or `kv.idempotency.abandon` span
+ * (under the request's `http.idempotency` span) and counts in `kv.commands`. The key, owner,
+ * fingerprint and response are never recorded.
  */
 import type { Redis } from 'ioredis';
 import type { ResponseCache } from '@arki/http/idempotency';
